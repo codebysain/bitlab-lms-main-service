@@ -1,53 +1,60 @@
 package main
 
 import (
+	"Internship/internal/entities"
+	"Internship/internal/repositories"
 	"Internship/pkg/database"
-	"log"
-	"os"
-
-	"github.com/gin-gonic/gin"
+	"fmt"
 	"github.com/sirupsen/logrus"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
 )
 
 func main() {
-	// Logging setup
 	logrus.SetFormatter(&logrus.TextFormatter{
 		FullTimestamp: true,
 	})
-
 	logrus.Info("Starting Main Service...")
 
-	// Load environment or set default
-	dsn := os.Getenv("DATABASE_DSN")
-	if dsn == "" {
-		dsn = "host=localhost user=postgres password=postgres dbname=bitlab_lms port=5432 sslmode=disable"
-	}
-
-	// Connect to DB
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	if err != nil {
-		log.Fatal("Failed to connect to database: ", err)
-	}
+	db := database.Connect()
 
 	logrus.Info("Connected to database")
 
-	// Setup Gin
-	r := gin.Default()
+	// Initialize repositories
+	courseRepo := repositories.NewCourseRepository(db)
+	chapterRepo := repositories.NewChapterRepository(db)
+	lessonRepo := repositories.NewLessonRepository(db)
 
-	// Ping route just to check
-	r.GET("/ping", func(c *gin.Context) {
-		c.JSON(200, gin.H{"message": "pong"})
-	})
-
-	// Run server
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
+	// Create a Course
+	course := &entities.Course{
+		Name:        "Backend Development with Go",
+		Description: "Learn how to build scalable backend systems with Golang",
 	}
-	logrus.Infof("Server running on port %s", port)
-	r.Run(":" + port)
-	db := database.Connect()
+	if err := courseRepo.Create(course); err != nil {
+		panic("failed to create course: " + err.Error())
+	}
+	fmt.Println("Course created with ID:", course.ID)
 
+	// Create a Chapter
+	chapter := &entities.Chapter{
+		Name:        "GORM Basics",
+		Description: "Learn ORM in Go",
+		Order:       1,
+		CourseID:    course.ID,
+	}
+	if err := chapterRepo.Create(chapter); err != nil {
+		panic("failed to create chapter: " + err.Error())
+	}
+	fmt.Println("Chapter created with ID:", chapter.ID)
+
+	// Create a Lesson
+	lesson := &entities.Lesson{
+		Name:        "Connecting to DB with GORM",
+		Description: "Setup and first queries",
+		Content:     "Install GORM, connect to PostgreSQL...",
+		Order:       1,
+		ChapterID:   chapter.ID,
+	}
+	if err := lessonRepo.Create(lesson); err != nil {
+		panic("failed to create lesson: " + err.Error())
+	}
+	fmt.Println("Lesson created with ID:", lesson.ID)
 }

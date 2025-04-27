@@ -11,7 +11,7 @@ import (
 func Connect() *gorm.DB {
 	dsn := os.Getenv("DATABASE_DSN")
 	if dsn == "" {
-		dsn = "host=localhost user=postgres password=241097 dbname=internship_db port=5432 sslmode=disable"
+		dsn = "host=localhost user=postgres password=241097 dbname=bitlab_lms port=5432 sslmode=disable"
 	}
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
