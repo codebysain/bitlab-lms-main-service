@@ -1,0 +1,260 @@
+basePath: /
+definitions:
+  entities.Chapter:
+    properties:
+      course_id:
+        type: integer
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      order:
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  entities.Course:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  entities.Lesson:
+    properties:
+      chapter_id:
+        type: integer
+      content:
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      order:
+        type: integer
+      updated_at:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: Backend service for BITLAB LMS platform
+  title: BITLAB LMS API
+  version: "1.0"
+paths:
+  /chapters:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new chapter
+      parameters:
+      - description: Chapter to create
+        in: body
+        name: chapter
+        required: true
+        schema:
+          $ref: '#/definitions/entities.Chapter'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/entities.Chapter'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a new chapter
+      tags:
+      - chapters
+  /chapters/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get a chapter by its ID
+      parameters:
+      - description: Chapter ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entities.Chapter'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get chapter by ID
+      tags:
+      - chapters
+  /courses:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new course with name and description
+      parameters:
+      - description: Course to create
+        in: body
+        name: course
+        required: true
+        schema:
+          $ref: '#/definitions/entities.Course'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/entities.Course'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a new course
+      tags:
+      - courses
+  /courses/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get a course by its ID
+      parameters:
+      - description: Course ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entities.Course'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get course by ID
+      tags:
+      - courses
+  /lessons:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new lesson with name and description
+      parameters:
+      - description: Lesson to create
+        in: body
+        name: lesson
+        required: true
+        schema:
+          $ref: '#/definitions/entities.Lesson'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/entities.Lesson'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a new lesson
+      tags:
+      - lessons
+  /lessons/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a lesson by its ID
+      parameters:
+      - description: Lesson ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entities.Lesson'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get lesson by ID
+      tags:
+      - lessons
+swagger: "2.0"
