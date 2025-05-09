@@ -24,11 +24,12 @@ func (r *chapterRepository) Create(chapter *entities.Chapter) error {
 }
 func (r *chapterRepository) GetByID(chapterID uint) (*entities.Chapter, error) {
 	var chapter entities.Chapter
-	if err := r.db.First(&chapter, chapterID).Error; err != nil {
+	if err := r.db.Preload("Lessons").First(&chapter, chapterID).Error; err != nil {
 		return nil, err
 	}
 	return &chapter, nil
 }
+
 func (r *chapterRepository) Update(chapter *entities.Chapter) error {
 	return r.db.Save(chapter).Error
 }
