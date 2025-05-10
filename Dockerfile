@@ -1,24 +1,24 @@
-# Use official Golang image
-FROM golang:1.21-alpine
+FROM golang:1.23.8
 
-# Set working directory
 WORKDIR /app
 
-# Install git (needed for go mod sometimes)
-RUN apk update && apk add --no-cache git
+# Install dependencies
+RUN apt-get update && apt-get install -y git curl
 
-# Copy go mod and sum
+# Install goose
+RUN go install github.com/pressly/goose/v3/cmd/goose@latest
+
+# Copy everything
 COPY go.mod ./
 COPY go.sum ./
-
-# Download dependencies
 RUN go mod download
-
-# Copy the source
 COPY . .
+COPY ./migrations ./migrations
+COPY ./entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
-# Build the Go app
-RUN go build -o main .
+# Build binary
+WORKDIR /app/cmd
+RUN go build -o /app/main .
 
-# Run it
-CMD ["/app/main"]
+ENTRYPOINT ["/entrypoint.sh"]
