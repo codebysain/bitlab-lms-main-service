@@ -30,6 +30,13 @@ CREATE TABLE lessons (
                          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+INSERT INTO courses (name, description, created_at, updated_at)
+VALUES ('Golang Developer', 'Learn to build web services in Go', NOW(), NOW());
+
+INSERT INTO chapters (name, description, "order", course_id, created_at, updated_at)
+VALUES ('Intro to Go', 'Getting started with Golang', 1, 1, NOW(), NOW());
+
+
 -- +goose Down
 -- SQL section 'Down' is executed when this migration is rolled back.
 

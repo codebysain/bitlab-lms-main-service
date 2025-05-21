@@ -13,7 +13,6 @@ COPY go.mod ./
 COPY go.sum ./
 RUN go mod download
 COPY . .
-COPY ./migrations ./migrations
 COPY ./entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 

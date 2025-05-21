@@ -2,11 +2,13 @@ package main
 
 import (
 	"Internship/internal/handler"
+	"Internship/internal/middleware"
 	"Internship/internal/repositories"
 	"Internship/internal/service"
 	"Internship/pkg/database"
-	"Internship/pkg/router"
 	"github.com/joho/godotenv"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"os"
 
 	_ "Internship/docs" // for Swagger
@@ -43,8 +45,18 @@ func main() {
 
 	r := gin.Default()
 
-	// 🔥 Register routes
-	router.SetupRoutes(r, courseHandler, chapterHandler, lessonHandler)
+	// Public route
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	// Protected routes
+	authGroup := r.Group("/")
+	authGroup.Use(middleware.AuthMiddleware())
+	authGroup.GET("/courses/:id", courseHandler.GetCourseByID)
+	authGroup.POST("/courses", courseHandler.CreateCourse)
+	authGroup.GET("/chapters/:id", chapterHandler.GetChapterByID)
+	authGroup.POST("/chapters", chapterHandler.CreateChapter)
+	authGroup.GET("/lessons/:id", lessonHandler.GetLessonByID)
+	authGroup.POST("/lessons", lessonHandler.CreateLesson)
 
 	port := os.Getenv("PORT")
 	if port == "" {
