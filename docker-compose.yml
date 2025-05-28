@@ -10,6 +10,7 @@ services:
       POSTGRES_DB: bitlab_lms
     volumes:
       - app_db_data:/var/lib/postgresql/data
+      - ./migrations/sql:/app/migrations/sql
     ports:
       - "5432:5432"
 

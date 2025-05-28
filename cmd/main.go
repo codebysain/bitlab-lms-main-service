@@ -9,6 +9,7 @@ import (
 	"github.com/joho/godotenv"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+
 	"os"
 
 	_ "Internship/docs" // for Swagger
@@ -43,13 +44,21 @@ func main() {
 	lessonService := service.NewLessonService(lessonRepo)
 	lessonHandler := handler.NewLessonHandler(lessonService)
 
-	r := gin.Default()
+	userRepo := repositories.NewUserRepository(db)
+	authService := service.NewAuthService(userRepo)
+	authHandler := handler.NewAuthHandler(authService)
 
-	// Public route
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	// Single router instance
+	router := gin.Default()
+
+	// Swagger
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	// Public routes
+	router.POST("/login", authHandler.Login)
 
 	// Protected routes
-	authGroup := r.Group("/")
+	authGroup := router.Group("/")
 	authGroup.Use(middleware.AuthMiddleware())
 	authGroup.GET("/courses/:id", courseHandler.GetCourseByID)
 	authGroup.POST("/courses", courseHandler.CreateCourse)
@@ -63,5 +72,6 @@ func main() {
 		port = "8080"
 	}
 	logrus.Infof("Server running on port %s", port)
-	r.Run(":" + port)
+	router.Run(":" + port)
+
 }
