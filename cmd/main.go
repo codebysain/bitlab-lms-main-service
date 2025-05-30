@@ -47,6 +47,7 @@ func main() {
 	userRepo := repositories.NewUserRepository(db)
 	authService := service.NewAuthService(userRepo)
 	authHandler := handler.NewAuthHandler(authService)
+	refreshHandler := handler.NewRefreshHandler(authService)
 
 	// Single router instance
 	router := gin.Default()
@@ -56,6 +57,7 @@ func main() {
 
 	// Public routes
 	router.POST("/login", authHandler.Login)
+	router.POST("/refresh", refreshHandler.RefreshToken)
 
 	// Protected routes
 	authGroup := router.Group("/")

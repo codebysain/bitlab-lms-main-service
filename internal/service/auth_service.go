@@ -10,6 +10,7 @@ import (
 type AuthService interface {
 	Authenticate(username, password string) (string, string, error)
 	GenerateTokens(user *entities.User) (string, string, error)
+	RefreshTokens(refreshToken string) (string, string, error)
 }
 
 type authService struct {
@@ -43,4 +44,11 @@ func (s *authService) GenerateTokens(user *entities.User) (string, string, error
 	accessToken := "fake-access-token-for-" + user.Username
 	refreshToken := "fake-refresh-token-for-" + user.Username
 	return accessToken, refreshToken, nil
+}
+func (s *authService) RefreshTokens(refreshToken string) (string, string, error) {
+	// Dummy logic for now: always return new fake tokens
+	accessToken := "new-fake-access-token"
+	newRefreshToken := "new-fake-refresh-token"
+
+	return accessToken, newRefreshToken, nil
 }
