@@ -3,6 +3,7 @@ package service
 import (
 	"Internship/internal/entities"
 	"Internship/internal/repositories"
+	"Internship/pkg/jwtutils"
 	"errors"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -11,6 +12,8 @@ type AuthService interface {
 	Authenticate(username, password string) (string, string, error)
 	GenerateTokens(user *entities.User) (string, string, error)
 	RefreshTokens(refreshToken string) (string, string, error)
+	RegisterUser(username, email, password, role string) error
+	CreateUser(user *entities.User) error
 }
 
 type authService struct {
@@ -39,16 +42,47 @@ func (s *authService) Authenticate(username, password string) (string, string, e
 	return s.GenerateTokens(user)
 }
 
-// Dummy token gen – replace with real JWT generation
 func (s *authService) GenerateTokens(user *entities.User) (string, string, error) {
-	accessToken := "fake-access-token-for-" + user.Username
-	refreshToken := "fake-refresh-token-for-" + user.Username
+	accessToken, err := jwtutils.GenerateAccessToken(user.ID, user.Username, user.Role)
+	if err != nil {
+		return "", "", err
+	}
+
+	refreshToken, err := jwtutils.GenerateRefreshToken(user.ID, user.Username, user.Role)
+	if err != nil {
+		return "", "", err
+	}
+
 	return accessToken, refreshToken, nil
 }
 func (s *authService) RefreshTokens(refreshToken string) (string, string, error) {
-	// Dummy logic for now: always return new fake tokens
-	accessToken := "new-fake-access-token"
-	newRefreshToken := "new-fake-refresh-token"
+	claims, err := jwtutils.ParseRefreshToken(refreshToken)
+	if err != nil {
+		return "", "", err
+	}
 
-	return accessToken, newRefreshToken, nil
+	return s.GenerateTokens(&entities.User{
+		ID:       claims.UserID,
+		Username: claims.Username,
+		Role:     claims.Role,
+	})
+}
+
+func (s *authService) RegisterUser(username, email, password, role string) error {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	user := &entities.User{
+		Username: username,
+		Email:    email,
+		Password: string(hashedPassword),
+		Role:     role,
+	}
+
+	return s.userRepo.Create(user)
+}
+func (s *authService) CreateUser(user *entities.User) error {
+	return s.userRepo.Create(user)
 }

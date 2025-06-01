@@ -62,6 +62,7 @@ func main() {
 	// Protected routes
 	authGroup := router.Group("/")
 	authGroup.Use(middleware.AuthMiddleware())
+	authGroup.POST("/admin/register", authHandler.RegisterUser)
 	authGroup.GET("/courses/:id", courseHandler.GetCourseByID)
 	authGroup.POST("/courses", courseHandler.CreateCourse)
 	authGroup.GET("/chapters/:id", chapterHandler.GetChapterByID)

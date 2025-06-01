@@ -8,6 +8,7 @@ import (
 
 type UserRepository interface {
 	FindByUsername(username string) (*entities.User, error)
+	Create(user *entities.User) error
 }
 
 type userRepository struct {
@@ -28,4 +29,7 @@ func (r *userRepository) FindByUsername(username string) (*entities.User, error)
 		return nil, result.Error
 	}
 	return &user, nil
+}
+func (r *userRepository) Create(user *entities.User) error {
+	return r.db.Create(user).Error
 }
