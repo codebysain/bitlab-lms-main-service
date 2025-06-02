@@ -45,6 +45,8 @@ func main() {
 	lessonHandler := handler.NewLessonHandler(lessonService)
 
 	userRepo := repositories.NewUserRepository(db)
+	userService := service.NewUserService(userRepo)
+	userHandler := handler.NewUserHandler(userService)
 	authService := service.NewAuthService(userRepo)
 	authHandler := handler.NewAuthHandler(authService)
 	refreshHandler := handler.NewRefreshHandler(authService)
@@ -63,6 +65,7 @@ func main() {
 	authGroup := router.Group("/")
 	authGroup.Use(middleware.AuthMiddleware())
 	authGroup.POST("/admin/register", authHandler.RegisterUser)
+	authGroup.PUT("/user/update", userHandler.UpdateUser)
 	authGroup.GET("/courses/:id", courseHandler.GetCourseByID)
 	authGroup.POST("/courses", courseHandler.CreateCourse)
 	authGroup.GET("/chapters/:id", chapterHandler.GetChapterByID)

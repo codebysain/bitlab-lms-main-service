@@ -10,7 +10,7 @@ import (
 )
 
 type AuthHandler struct {
-	authService service.AuthService // Use the interface, not the pointer to struct
+	authService service.AuthService
 }
 
 func NewAuthHandler(authService service.AuthService) *AuthHandler {
