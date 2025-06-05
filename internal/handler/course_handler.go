@@ -1,8 +1,9 @@
 package handler
 
 import (
-	"Internship/internal/entities"
+	"Internship/internal/dto"
 	"Internship/internal/service"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -57,14 +58,25 @@ func (h *CourseHandler) GetCourseByID(c *gin.Context) {
 // @Router /courses [post]
 // CreateCourse creates a new course
 func (h *CourseHandler) CreateCourse(c *gin.Context) {
-	var course entities.Course
-	if err := c.ShouldBindJSON(&course); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
+	role, exists := c.Get("role")
+	if !exists || role != "ROLE_ADMIN" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
 		return
 	}
-	if err := h.service.Create(&course); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create course"})
+
+	var req dto.CreateCourseRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	course, err := h.service.CreateCourse(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
 	c.JSON(http.StatusCreated, course)
+	log.Println("🧠 ROLE in context:", role)
+
 }

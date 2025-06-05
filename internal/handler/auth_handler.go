@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
+	"strings"
 )
 
 type AuthHandler struct {
@@ -17,6 +18,7 @@ func NewAuthHandler(authService service.AuthService) *AuthHandler {
 	return &AuthHandler{authService: authService}
 }
 
+// Login handler
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req dto.LoginRequest
 
@@ -36,10 +38,12 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		RefreshToken: refreshToken,
 	})
 }
+
+// RegisterUser allows admins to register new users with a specific role
 func (h *AuthHandler) RegisterUser(c *gin.Context) {
-	// 1. Extract role from context (set by middleware)
+	// 1. Check if caller is admin
 	roleInterface, exists := c.Get("role")
-	if !exists || roleInterface != "admin" {
+	if !exists || roleInterface != "ROLE_ADMIN" {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
 		return
 	}
@@ -58,12 +62,14 @@ func (h *AuthHandler) RegisterUser(c *gin.Context) {
 		return
 	}
 
-	// 4. Create user entity
+	// 4. Normalize role and create user
+	normalizedRole := "ROLE_" + strings.ToUpper(req.Role)
+
 	user := &entities.User{
 		Username: req.Username,
 		Email:    req.Email,
 		Password: string(hashed),
-		Role:     req.Role,
+		Role:     normalizedRole,
 	}
 
 	// 5. Save to DB

@@ -31,6 +31,7 @@ func AuthMiddleware() gin.HandlerFunc {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
 			return
 		}
+		log.Printf("🎯 Extracted Claims: %+v\n", claims)
 
 		c.Set("user_id", claims.UserID)
 		c.Set("username", claims.Username)
