@@ -3,7 +3,6 @@ package handler
 import (
 	"Internship/internal/dto"
 	"Internship/internal/service"
-	"log"
 	"net/http"
 	"strconv"
 
@@ -77,6 +76,5 @@ func (h *CourseHandler) CreateCourse(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, course)
-	log.Println("🧠 ROLE in context:", role)
 
 }
