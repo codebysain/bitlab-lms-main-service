@@ -53,6 +53,11 @@ func (h *LessonHandler) GetLessonByID(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /lessons [post]
 func (h *LessonHandler) CreateLesson(c *gin.Context) {
+	role, exists := c.Get("role")
+	if !exists || role != "ROLE_ADMIN" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
+		return
+	}
 	var lesson entities.Lesson
 	if err := c.ShouldBindJSON(&lesson); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid input"})
