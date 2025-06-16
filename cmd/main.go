@@ -6,6 +6,7 @@ import (
 	"Internship/internal/repositories"
 	"Internship/internal/service"
 	"Internship/pkg/database"
+	"Internship/pkg/minio"
 	"github.com/joho/godotenv"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -30,6 +31,7 @@ func main() {
 
 	db := database.Connect()
 	logrus.Info("Connected to database")
+	minio.InitMinio()
 
 	// Init repos, services, handlers
 	courseRepo := repositories.NewCourseRepository(db)
@@ -50,6 +52,9 @@ func main() {
 	authService := service.NewAuthService(userRepo)
 	authHandler := handler.NewAuthHandler(authService)
 	refreshHandler := handler.NewRefreshHandler(authService)
+	attachmentRepo := repositories.NewAttachmentRepository(db)
+	attachmentService := service.NewAttachmentService(attachmentRepo)
+	attachmentHandler := handler.NewAttachmentHandler(attachmentService)
 
 	// Single router instance
 	router := gin.Default()
@@ -72,6 +77,8 @@ func main() {
 	authGroup.POST("/chapters", chapterHandler.CreateChapter)
 	authGroup.GET("/lessons/:id", lessonHandler.GetLessonByID)
 	authGroup.POST("/lessons", lessonHandler.CreateLesson)
+	authGroup.POST("/upload", attachmentHandler.UploadFile)
+	authGroup.GET("/download/:id", attachmentHandler.DownloadFile)
 
 	port := os.Getenv("PORT")
 	if port == "" {
