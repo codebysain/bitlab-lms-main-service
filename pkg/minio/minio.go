@@ -15,13 +15,16 @@ var Client *minio.Client
 var BucketName string
 
 func InitMinio() {
-	endpoint := os.Getenv("MINIO_ENDPOINT")    // ex: "minio:9000"
-	accessKey := os.Getenv("MINIO_ACCESS_KEY") // ex: "minioadmin"
-	secretKey := os.Getenv("MINIO_SECRET_KEY") // ex: "minioadmin"
-	BucketName = os.Getenv("MINIO_BUCKET")     // ex: "attachments"
+	endpoint := os.Getenv("S3_ENDPOINT")    // e.g. "http://minio:9000"
+	accessKey := os.Getenv("S3_ACCESS_KEY") // e.g. "minioadmin"
+	secretKey := os.Getenv("S3_SECRET_KEY") // e.g. "minioadmin"
+	BucketName = os.Getenv("S3_BUCKET")     // e.g. "attachments"
 	useSSL := false
 
-	// Initialize client
+	if BucketName == "" {
+		log.Fatal("❌ Bucket name is empty — check S3_BUCKET in .env")
+	}
+
 	minioClient, err := minio.New(endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
 		Secure: useSSL,
@@ -33,7 +36,6 @@ func InitMinio() {
 	Client = minioClient
 	log.Printf("✅ MinIO client initialized — Bucket: %s", BucketName)
 
-	// Check if bucket exists
 	exists, err := Client.BucketExists(context.Background(), BucketName)
 	if err != nil {
 		log.Fatalf("❌ Error checking bucket: %v", err)
@@ -42,6 +44,7 @@ func InitMinio() {
 		log.Fatalf("🚫 Bucket '%s' does not exist. Create it manually first.", BucketName)
 	}
 }
+
 func UploadFile(originalName string, file io.Reader) (string, string, error) {
 	hashedName := uuid.New().String()
 

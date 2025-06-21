@@ -411,8 +411,6 @@ var SwaggerInfo = &swag.Spec{
 	Description:      "Backend service for BITLAB LMS platform",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
-	LeftDelim:        "{{",
-	RightDelim:       "}}",
 }
 
 func init() {

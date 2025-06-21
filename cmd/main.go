@@ -11,11 +11,9 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
-	"os"
-
-	_ "Internship/docs" // for Swagger
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
+	"os"
 )
 
 // @title BITLAB LMS API
@@ -24,42 +22,47 @@ import (
 // @host localhost:8080
 // @BasePath /
 func main() {
-	_ = godotenv.Load()
+	// Load .env for local/dev
+	if err := godotenv.Load(); err != nil {
+		logrus.Warn("⚠️ .env file not found (might be expected in Docker)")
+	}
 
 	logrus.SetFormatter(&logrus.TextFormatter{FullTimestamp: true})
-	logrus.Info("Starting Main Service...")
+	logrus.Info("🚀 Starting Main Service...")
 
+	// Validate required envs
+	bucket := os.Getenv("S3_BUCKET")
+	if bucket == "" {
+		logrus.Fatal("❌ Missing S3_BUCKET in env")
+	}
+	if os.Getenv("S3_ENDPOINT") == "" {
+		logrus.Fatal("❌ Missing S3_ENDPOINT in env")
+	}
+	if os.Getenv("S3_ACCESS_KEY") == "" || os.Getenv("S3_SECRET_KEY") == "" {
+		logrus.Fatal("❌ Missing MinIO credentials (S3_ACCESS_KEY or S3_SECRET_KEY)")
+	}
+	logrus.Infof("📦 Using S3 bucket: %s", bucket)
+
+	// DB connect
 	db := database.Connect()
-	logrus.Info("Connected to database")
+	logrus.Info("✅ Connected to database")
+
+	// Init MinIO
 	minio.InitMinio()
 
-	// Init repos, services, handlers
-	courseRepo := repositories.NewCourseRepository(db)
-	courseService := service.NewCourseService(courseRepo)
-	courseHandler := handler.NewCourseHandler(courseService)
-
-	chapterRepo := repositories.NewChapterRepository(db)
-	chapterService := service.NewChapterService(chapterRepo)
-	chapterHandler := handler.NewChapterHandler(chapterService)
-
-	lessonRepo := repositories.NewLessonRepository(db)
-	lessonService := service.NewLessonService(lessonRepo)
-	lessonHandler := handler.NewLessonHandler(lessonService)
-
+	// Handlers
+	courseHandler := handler.NewCourseHandler(service.NewCourseService(repositories.NewCourseRepository(db)))
+	chapterHandler := handler.NewChapterHandler(service.NewChapterService(repositories.NewChapterRepository(db)))
+	lessonHandler := handler.NewLessonHandler(service.NewLessonService(repositories.NewLessonRepository(db)))
 	userRepo := repositories.NewUserRepository(db)
-	userService := service.NewUserService(userRepo)
-	userHandler := handler.NewUserHandler(userService)
+	userHandler := handler.NewUserHandler(service.NewUserService(userRepo))
 	authService := service.NewAuthService(userRepo)
 	authHandler := handler.NewAuthHandler(authService)
 	refreshHandler := handler.NewRefreshHandler(authService)
-	attachmentRepo := repositories.NewAttachmentRepository(db)
-	attachmentService := service.NewAttachmentService(attachmentRepo)
-	attachmentHandler := handler.NewAttachmentHandler(attachmentService)
+	attachmentHandler := handler.NewAttachmentHandler(service.NewAttachmentService(repositories.NewAttachmentRepository(db)))
 
-	// Single router instance
+	// Router
 	router := gin.Default()
-
-	// Swagger
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Public routes
@@ -80,11 +83,11 @@ func main() {
 	authGroup.POST("/upload", attachmentHandler.UploadFile)
 	authGroup.GET("/download/:id", attachmentHandler.DownloadFile)
 
+	// Start
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
-	logrus.Infof("Server running on port %s", port)
+	logrus.Infof("🌐 Server running on port %s", port)
 	router.Run(":" + port)
-
 }

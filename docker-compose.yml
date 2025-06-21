@@ -1,6 +1,9 @@
 version: '3.8'
 
 services:
+  #########################################
+  # 📦 PostgreSQL (App DB)
+  #########################################
   app_db:
     image: postgres:15
     container_name: app_db
@@ -14,6 +17,9 @@ services:
     ports:
       - "5432:5432"
 
+  #########################################
+  # 🛡️ PostgreSQL for Keycloak
+  #########################################
   keycloak_db:
     image: postgres:15
     container_name: keycloak_db
@@ -26,6 +32,9 @@ services:
     ports:
       - "5433:5432"
 
+  #########################################
+  # 🔑 Keycloak Identity Provider
+  #########################################
   keycloak:
     image: quay.io/keycloak/keycloak:24.0.1
     container_name: keycloak
@@ -46,21 +55,13 @@ services:
     volumes:
       - ./keycloak/init:/opt/keycloak/data/import
 
-  main_service:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: main_service
-    ports:
-      - "8080:8080"
-    depends_on:
-      - app_db
-    env_file:
-      - .env
-
+  #########################################
+  # ☁️ MinIO (S3-compatible storage)
+  #########################################
   minio:
     image: minio/minio:latest
     container_name: minio
+    command: server /data --console-address ":9001"
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -70,9 +71,32 @@ services:
     volumes:
       - minio_data:/data
       - ./init-bucket.sh:/init-bucket.sh
-      - ./minio_logs:/var/log
-    entrypoint: >
-      /bin/sh -c "/init-bucket.sh && minio server /data --console-address ':9001'"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  #########################################
+  # 🧠 Main Golang API Service
+  #########################################
+  main_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: main_service
+    ports:
+      - "8080:8080"
+    depends_on:
+      minio:
+        condition: service_healthy
+      app_db:
+        condition: service_started
+    volumes:
+      - ./entrypoint.sh:/entrypoint.sh
+    entrypoint: [ "/bin/sh", "/entrypoint.sh" ]
+    env_file:
+      - .env
 
 volumes:
   minio_data:
