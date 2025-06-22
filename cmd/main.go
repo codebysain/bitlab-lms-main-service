@@ -7,92 +7,93 @@ import (
 	"Internship/internal/service"
 	"Internship/pkg/database"
 	"Internship/pkg/minio"
+	"Internship/pkg/router" // <- new import
+	"context"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
-	"os"
 )
 
-// @title BITLAB LMS API
-// @version 1.0
-// @description Backend service for BITLAB LMS platform
-// @host localhost:8080
-// @BasePath /
+/*
+@title       BITLAB LMS API
+@version     1.0
+@description Backend service for BITLAB LMS platform
+@host        localhost:8080
+@BasePath    /
+*/
 func main() {
-	// Load .env for local/dev
-	if err := godotenv.Load(); err != nil {
-		logrus.Warn("⚠️ .env file not found (might be expected in Docker)")
-	}
-
+	_ = godotenv.Load() // ignore error inside Docker
 	logrus.SetFormatter(&logrus.TextFormatter{FullTimestamp: true})
-	logrus.Info("🚀 Starting Main Service...")
 
-	// ✅ Init Keycloak OIDC verifier
-	if os.Getenv("KEYCLOAK_ISSUER") == "" || os.Getenv("KEYCLOAK_CLIENT_ID") == "" {
-		logrus.Fatal("❌ Missing Keycloak env (KEYCLOAK_ISSUER, KEYCLOAK_CLIENT_ID)")
-	}
+	requireEnv(
+		"KEYCLOAK_ISSUER", "KEYCLOAK_CLIENT_ID", "KEYCLOAK_TOKEN_URL",
+		"S3_BUCKET", "S3_ENDPOINT", "S3_ACCESS_KEY", "S3_SECRET_KEY",
+	)
+
+	logrus.Info("🚀 Starting BITLAB-LMS main service")
+
+	/* ---------- infrastructure ---------- */
 	middleware.InitOIDC()
-
-	// Validate S3 env
-	if os.Getenv("S3_BUCKET") == "" || os.Getenv("S3_ENDPOINT") == "" {
-		logrus.Fatal("❌ Missing S3 envs (S3_BUCKET, S3_ENDPOINT)")
-	}
-	if os.Getenv("S3_ACCESS_KEY") == "" || os.Getenv("S3_SECRET_KEY") == "" {
-		logrus.Fatal("❌ Missing S3 credentials (S3_ACCESS_KEY, S3_SECRET_KEY)")
-	}
-	logrus.Infof("📦 S3 bucket: %s", os.Getenv("S3_BUCKET"))
-
-	// DB + MinIO
 	db := database.Connect()
-	logrus.Info("✅ Connected to database")
 	minio.InitMinio()
 
-	// Init Repos and Services
+	/* ---------- repos / services ---------- */
 	userRepo := repositories.NewUserRepository(db)
-	authService := service.NewAuthService(userRepo)
+	authSvc := service.NewAuthService(userRepo)
 
-	// Init Handlers
-	courseHandler := handler.NewCourseHandler(service.NewCourseService(repositories.NewCourseRepository(db)))
-	chapterHandler := handler.NewChapterHandler(service.NewChapterService(repositories.NewChapterRepository(db)))
-	lessonHandler := handler.NewLessonHandler(service.NewLessonService(repositories.NewLessonRepository(db)))
-	userHandler := handler.NewUserHandler(service.NewUserService(userRepo))
-	authHandler := handler.NewAuthHandler(authService)
-	refreshHandler := handler.NewRefreshHandler(authService)
-	attachmentHandler := handler.NewAttachmentHandler(service.NewAttachmentService(repositories.NewAttachmentRepository(db)))
+	courseH := handler.NewCourseHandler(service.NewCourseService(repositories.NewCourseRepository(db)))
+	chapterH := handler.NewChapterHandler(service.NewChapterService(repositories.NewChapterRepository(db)))
+	lessonH := handler.NewLessonHandler(service.NewLessonService(repositories.NewLessonRepository(db)))
+	attachH := handler.NewAttachmentHandler(service.NewAttachmentService(repositories.NewAttachmentRepository(db)))
 
-	// Init Router
-	router := gin.Default()
-	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	authH := handler.NewAuthHandler(authSvc)
+	refreshH := handler.NewRefreshHandler(authSvc)
+	userH := handler.NewUserHandler(service.NewUserService(userRepo))
 
-	// Public
-	router.POST("/login", authHandler.Login)
-	router.POST("/refresh", refreshHandler.RefreshToken)
+	/* ---------- router ---------- */
+	r := gin.New()
+	r.Use(gin.Logger(), gin.Recovery(), middleware.ErrorHandlerMiddleware())
+	router.SetupRoutes(r, authH, refreshH, userH, courseH, chapterH, lessonH, attachH)
 
-	// Protected routes
-	authGroup := router.Group("/")
-	authGroup.Use(middleware.AuthMiddleware())
-
-	// Admin-only
-	authGroup.POST("/admin/register", middleware.AdminOnlyMiddleware(), authHandler.RegisterUser)
-	authGroup.POST("/courses", middleware.AdminOnlyMiddleware(), courseHandler.CreateCourse)
-	authGroup.POST("/chapters", middleware.AdminOnlyMiddleware(), chapterHandler.CreateChapter)
-	authGroup.POST("/lessons", middleware.AdminOnlyMiddleware(), lessonHandler.CreateLesson)
-	authGroup.POST("/upload", middleware.AdminOnlyMiddleware(), attachmentHandler.UploadFile)
-
-	// Any authenticated user
-	authGroup.PUT("/user/update", userHandler.UpdateUser)
-	authGroup.GET("/courses/:id", courseHandler.GetCourseByID)
-	authGroup.GET("/chapters/:id", chapterHandler.GetChapterByID)
-	authGroup.GET("/lessons/:id", lessonHandler.GetLessonByID)
-	authGroup.GET("/download/:id", attachmentHandler.DownloadFile)
-
-	// Start
+	/* ---------- run w/ graceful shutdown ---------- */
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
-	logrus.Infof("🌐 Server running on port %s", port)
-	router.Run(":" + port)
+
+	srv := &http.Server{Addr: ":" + port, Handler: r}
+
+	go func() {
+		logrus.Infof("🌐 Listening on :%s", port)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logrus.Fatalf("❌ listen: %v", err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	logrus.Info("🛑 Shutting down...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		logrus.Fatalf("❌ forced shutdown: %v", err)
+	}
+	logrus.Info("✅ Server exited gracefully")
+}
+
+/* helpers */
+func requireEnv(keys ...string) {
+	for _, k := range keys {
+		if os.Getenv(k) == "" {
+			logrus.Fatalf("❌ required env %s not set", k)
+		}
+	}
 }

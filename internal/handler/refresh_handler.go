@@ -24,7 +24,9 @@ func (h *RefreshHandler) RefreshToken(c *gin.Context) {
 		return
 	}
 
-	accessToken, newRefreshToken, err := h.authService.RefreshTokens(req.RefreshToken)
+	// pass the context ➜
+	accessToken, newRefreshToken, err :=
+		h.authService.RefreshTokens(c.Request.Context(), req.RefreshToken)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Could not refresh token"})
 		return
